@@ -1,0 +1,54 @@
+version: '3.9'
+
+networks:
+  monitoring:
+    external: false
+    name: 'monitoring'
+
+volumes:
+  influxdb-data:
+    name: 'influxdb-data'
+  grafana-data:
+    name: 'grafana-data'
+
+services:
+  influxdb:
+    container_name: influxdb
+    image: influxdb:2.1-alpine
+    ports:
+      - '8086:8086'
+    networks:
+      - monitoring
+    volumes:
+      - influxdb-data:/var/lib/influxdb2
+      #- /etc/influxdb2:/etc/influxdb2
+      # # (optional) If you're using self-signed certs
+      - type: bind
+        source: ./ssl
+        target: /etc/ssl/probolinggokota.go.id
+        read_only: true
+    # # (optional) If you're using self-signed certs
+    command: influxd --tls-cert=/etc/ssl/probolinggokota.go.id/fullchain.pem --tls-key=/etc/ssl/probolinggokota.go.id/cert-key.pem
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana-oss:latest
+    container_name: grafana
+    ports:
+      - "443:3000"
+    networks:
+      - monitoring
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - type: bind
+        source: ./ssl
+        target: /etc/ssl/probolinggokota.go.id
+        read_only: true
+    environment:
+      - GF_SERVER_PROTOCOL=https
+      - GF_SERVER_CERT_FILE=/etc/ssl/probolinggokota.go.id/fullchain.pem
+      - GF_SERVER_CERT_KEY=/etc/ssl/probolinggokota.go.id/cert-key.pem
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Viewer
+      - GF_AUTH_ANONYMOUS_HIDE_VERSION=true
+    restart: unless-stopped
